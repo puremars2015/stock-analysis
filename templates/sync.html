@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}資料同步{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-3xl font-bold text-gray-800">資料同步</h1>
+</div>
+
+<div class="card mb-6">
+    <h2 class="text-lg font-semibold text-gray-700 mb-4">同步股票資料</h2>
+    <p class="text-sm text-gray-500 mb-4">從 FinMind API 同步股票資料到本地資料庫</p>
+    <button id="sync-btn" class="btn-primary">同步資料</button>
+    <div id="sync-result" class="mt-4 hidden">
+        <div class="p-4 bg-gray-100 rounded-lg text-sm font-mono" id="sync-output"></div>
+    </div>
+</div>
+
+<div class="card">
+    <h2 class="text-lg font-semibold text-gray-700 mb-4">排程設定</h2>
+    <p class="text-sm text-gray-500">使用 APScheduler 自動同步（需另行設定）</p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('sync-btn').addEventListener('click', async function() {
+    const btn = this;
+    btn.disabled = true;
+    btn.textContent = '同步中...';
+
+    try {
+        const resp = await fetch('/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ stock_ids: ['2330', '2317', '2454', '2303', '3008'] })
+        });
+        const data = await resp.json();
+        document.getElementById('sync-result').classList.remove('hidden');
+        document.getElementById('sync-output').textContent = JSON.stringify(data, null, 2);
+    } catch (e) {
+        alert('同步失敗: ' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '同步資料';
+    }
+});
+</script>
+{% endblock %}

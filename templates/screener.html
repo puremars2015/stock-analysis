@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}選股器{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-3xl font-bold text-gray-800">選股器</h1>
+</div>
+
+{% if ai_summary %}
+<div class="card mb-6 bg-green-50 border-green-200">
+    <h3 class="text-sm font-semibold text-green-800 mb-2">AI 分析</h3>
+    <p class="text-green-900">{{ ai_summary }}</p>
+</div>
+{% endif %}
+
+<div class="card mb-6">
+    <div class="flex flex-wrap gap-2">
+        {% for key, preset in presets.items() %}
+        <a href="/screener?preset={{ key }}" class="px-4 py-2 rounded-lg {% if current_preset == key %}bg-blue-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %} transition-colors">
+            {{ preset.name }}
+        </a>
+        {% endfor %}
+    </div>
+    <p class="text-sm text-gray-500 mt-3">{{ presets[current_preset].description if presets[current_preset] else "" }}</p>
+</div>
+
+<div class="card">
+    <h2 class="text-lg font-semibold text-gray-700 mb-4">篩選結果 ({{ results|length }})</h2>
+    {% if results %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b text-gray-500">
+                    <th class="py-2 px-3 text-left">股票代碼</th>
+                    <th class="py-2 px-3 text-right">收盤價</th>
+                    <th class="py-2 px-3 text-right">MA5</th>
+                    <th class="py-2 px-3 text-right">MA20</th>
+                    <th class="py-2 px-3 text-right">RSI(12)</th>
+                    <th class="py-2 px-3 text-right">成交量</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in results %}
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="py-2 px-3"><a href="/stock?id={{ r.stock_id }}" class="text-blue-600 hover:underline">{{ r.stock_id }}</a></td>
+                    <td class="py-2 px-3 text-right font-semibold">{{ "%.2f"|format(r.close) if r.close else "-" }}</td>
+                    <td class="py-2 px-3 text-right">{{ "%.2f"|format(r.ma5) if r.ma5 else "-" }}</td>
+                    <td class="py-2 px-3 text-right">{{ "%.2f"|format(r.ma20) if r.ma20 else "-" }}</td>
+                    <td class="py-2 px-3 text-right">{{ "%.1f"|format(r.rsi14) if r.rsi14 else "-" }}</td>
+                    <td class="py-2 px-3 text-right">{{ "%.0f"|format(r.volume) if r.volume else "-" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-gray-500 text-center py-8">目前沒有符合條件的股票</p>
+    {% endif %}
+</div>
+{% endblock %}

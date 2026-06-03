@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}AI 摘要{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-3xl font-bold text-gray-800">AI 投資摘要</h1>
+    <p class="text-gray-500">使用 GPT 生成個股分析摘要</p>
+</div>
+
+<div class="card mb-6">
+    <form action="/ai_summary" method="get" class="flex gap-4">
+        <input type="text" name="stock_id" placeholder="輸入股票代碼" class="flex-1 px-4 py-2 border rounded-lg" required>
+        <button type="submit" class="btn-primary">生成摘要</button>
+    </form>
+</div>
+
+{% if summary %}
+<div class="card bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100">
+    <h3 class="text-lg font-semibold text-blue-800 mb-3">分析摘要</h3>
+    <div class="prose prose-blue max-w-none">
+        <p class="text-gray-700 leading-relaxed">{{ summary }}</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

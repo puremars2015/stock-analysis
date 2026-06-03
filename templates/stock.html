@@ -1,162 +1,115 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ info.stock_name }} ({{ info.stock_id }}) - 台股資料分析平台</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body { font-family: 'Inter', system-ui, sans-serif; }
-        .chart-container { width: 100%; height: 350px; }
-    </style>
-</head>
-<body class="bg-[#f8fafc] min-h-screen">
-    <nav class="bg-[#1e3a8a] text-white shadow-lg">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex items-center justify-between h-16">
-                <div class="flex space-x-8">
-                    <a href="/" class="px-4 py-2 rounded hover:bg-blue-700">大盤</a>
-                    <a href="/stock?id=2330" class="px-4 py-2 rounded hover:bg-blue-700">個股</a>
-                    <a href="/stock?id=2330" class="px-4 py-2 rounded hover:bg-blue-700">法人</a>
-                </div>
-                <div class="text-sm">台股資料分析平台 MVP</div>
-            </div>
-        </div>
-    </nav>
+{% extends "base.html" %}
 
-    <main class="max-w-7xl mx-auto px-4 py-6">
-        <div class="flex items-center justify-between mb-6">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-800">{{ info.stock_name }} ({{ info.stock_id }})</h1>
-                <p class="text-gray-500">{{ info.industry_category }}</p>
-            </div>
-            <a href="/" class="text-[#1e3a8a] hover:underline">← 返回大盤</a>
-        </div>
+{% block title %}個股查詢 - {{ info.stock_name if info else "" }}{% endblock %}
 
-        {% if info.error %}
-        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-            <strong>錯誤：</strong>{{ info.error }}
-        </div>
-        {% endif %}
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-3xl font-bold text-gray-800">{{ info.stock_name if info else "" }} ({{ info.stock_id if info else "" }})</h1>
+    <p class="text-gray-500">{{ info.industry_category if info else "" }}</p>
+</div>
 
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div class="bg-white rounded-xl shadow p-4">
-                <div class="text-sm text-gray-500 mb-1">最新收盤價</div>
-                <div class="text-2xl font-bold text-[#1e3a8a]">
-                    {% if kline and kline|length > 0 and not kline[0].error %}{{ kline[-1].close }}{% else %}N/A{% endif %}
-                </div>
-            </div>
-            <div class="bg-white rounded-xl shadow p-4">
-                <div class="text-sm text-gray-500 mb-1">漲跌</div>
-                <div class="text-2xl font-bold {% if kline and kline|length >= 2 and not kline[0].error and (kline[-1].close - kline[-2].close) >= 0 %}text-[#10b981]{% else %}text-[#ef4444]{% endif %}">
-                    {% if kline and kline|length >= 2 and not kline[0].error %}{{ "%.2f"|format(kline[-1].close - kline[-2].close) }}{% else %}N/A{% endif %}
-                </div>
-            </div>
-            <div class="bg-white rounded-xl shadow p-4">
-                <div class="text-sm text-gray-500 mb-1">產業</div>
-                <div class="text-xl font-semibold text-gray-800">{{ info.industry_category }}</div>
-            </div>
-            <div class="bg-white rounded-xl shadow p-4">
-                <div class="text-sm text-gray-500 mb-1">股票代碼</div>
-                <div class="text-xl font-semibold text-gray-800">{{ info.stock_id }}</div>
-            </div>
-        </div>
+{% if ai_summary %}
+<div class="card mb-6 bg-blue-50 border-blue-200">
+    <h3 class="text-sm font-semibold text-blue-800 mb-2">AI 摘要</h3>
+    <p class="text-blue-900">{{ ai_summary }}</p>
+</div>
+{% endif %}
 
-        <div class="bg-white rounded-xl shadow p-4 mb-6">
-            <h2 class="text-lg font-semibold mb-4 text-gray-800">K 線圖</h2>
-            {% if kline and kline|length > 0 and not kline[0].error %}
-            <div id="stock-chart" class="chart-container"></div>
-            {% else %}
-            <div class="text-red-500 py-8 text-center">無法獲取 K 線資料</div>
-            {% endif %}
-        </div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="card">
+        <p class="text-sm text-gray-500">產業類別</p>
+        <p class="text-lg font-semibold">{{ info.industry_category if info else "-" }}</p>
+    </div>
+    <div class="card">
+        <p class="text-sm text-gray-500">股票類型</p>
+        <p class="text-lg font-semibold">{{ info.type if info else "-" }}</p>
+    </div>
+    <div class="card">
+        <p class="text-sm text-gray-500">最新收盤</p>
+        <p class="text-lg font-semibold">{{ "%.2f"|format(kline[-1].close) if kline else "-" }}</p>
+    </div>
+    <div class="card">
+        <p class="text-sm text-gray-500">成交量</p>
+        <p class="text-lg font-semibold">{{ "%.0f"|format(kline[-1].volume) if kline else "-" }}</p>
+    </div>
+</div>
 
-        <div class="bg-white rounded-xl shadow p-4">
-            <h2 class="text-lg font-semibold mb-4 text-gray-800">法人買賣超</h2>
-            {% if trades and trades|length > 0 %}
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">日期</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">法人</th>
-                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500">買超</th>
-                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500">賣超</th>
-                            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500">淨買賣</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        {% for trade in trades %}
-                        <tr class="{% if (trade.buy - trade.sell) >= 0 %}hover:bg-green-50{% else %}hover:bg-red-50{% endif %}">
-                            <td class="px-4 py-3 text-sm text-gray-900">{{ trade.date }}</td>
-                            <td class="px-4 py-3 text-sm text-gray-500">{{ trade.name }}</td>
-                            <td class="px-4 py-3 text-sm text-right text-[#10b981]">{{ trade.buy|int }}</td>
-                            <td class="px-4 py-3 text-sm text-right text-[#ef4444]">{{ trade.sell|int }}</td>
-                            <td class="px-4 py-3 text-sm text-right font-semibold {% if (trade.buy - trade.sell) >= 0 %}text-[#10b981]{% else %}text-[#ef4444]{% endif %}">
-                                {{ (trade.buy - trade.sell)|int }}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="text-red-500 py-4 text-center">無法獲取法人買賣超資料</div>
-            {% endif %}
-        </div>
+<div class="card mb-6">
+    <h2 class="text-lg font-semibold text-gray-700 mb-4">K 線圖</h2>
+    <div id="kline-chart" style="height: 400px;"></div>
+</div>
 
-        <div class="mt-6 bg-white rounded-xl shadow p-4">
-            <h2 class="text-lg font-semibold mb-4 text-gray-800">查詢其他股票</h2>
-            <form action="/stock" method="get" class="flex gap-2">
-                <input type="text" name="id" placeholder="輸入股票代碼" value="{{ info.stock_id }}" class="flex-1 px-4 py-2 border rounded-lg">
-                <button type="submit" class="px-6 py-2 bg-[#1e3a8a] text-white rounded-lg hover:bg-blue-700">查詢</button>
-            </form>
-        </div>
-    </main>
+<div class="card mb-6">
+    <h2 class="text-lg font-semibold text-gray-700 mb-4">技術指標</h2>
+    <div class="grid grid-cols-3 md:grid-cols-6 gap-4">
+        <div><p class="text-xs text-gray-500">MA5</p><p class="font-semibold">{{ "%.2f"|format(indicators['ma5']) if indicators and indicators.get('ma5') else "-" }}</p></div>
+        <div><p class="text-xs text-gray-500">MA20</p><p class="font-semibold">{{ "%.2f"|format(indicators['ma20']) if indicators and indicators.get('ma20') else "-" }}</p></div>
+        <div><p class="text-xs text-gray-500">MA60</p><p class="font-semibold">{{ "%.2f"|format(indicators['ma60']) if indicators and indicators.get('ma60') else "-" }}</p></div>
+        <div><p class="text-xs text-gray-500">RSI(6)</p><p class="font-semibold">{{ "%.1f"|format(indicators['rsi6']) if indicators and indicators.get('rsi6') else "-" }}</p></div>
+        <div><p class="text-xs text-gray-500">K</p><p class="font-semibold">{{ "%.1f"|format(indicators['k_value']) if indicators and indicators.get('k_value') else "-" }}</p></div>
+        <div><p class="text-xs text-gray-500">D</p><p class="font-semibold">{{ "%.1f"|format(indicators['d_value']) if indicators and indicators.get('d_value') else "-" }}</p></div>
+    </div>
+</div>
 
-    <footer class="bg-[#1e3a8a] text-white text-center py-4 mt-8">
-        <div class="text-sm">© 2026 台股資料分析平台 MVP</div>
-    </footer>
+{% if institutional %}
+<div class="card">
+    <h2 class="text-lg font-semibold text-gray-700 mb-4">法人買賣</h2>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b text-gray-500">
+                    <th class="py-2 px-3 text-left">日期</th>
+                    <th class="py-2 px-3 text-left">法人</th>
+                    <th class="py-2 px-3 text-right">買進</th>
+                    <th class="py-2 px-3 text-right">賣出</th>
+                    <th class="py-2 px-3 text-right">淨買賣</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in institutional[:10] %}
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="py-2 px-3">{{ t.date }}</td>
+                    <td class="py-2 px-3">{{ t.name }}</td>
+                    <td class="py-2 px-3 text-right text-green-600">{{ "%.0f"|format(t.buy) }}</td>
+                    <td class="py-2 px-3 text-right text-red-600">{{ "%.0f"|format(t.sell) }}</td>
+                    <td class="py-2 px-3 text-right {% if t.buy - t.sell >= 0 %}text-green-600{% else %}text-red-600{% endif %}">{{ "%.0f"|format(t.buy - t.sell) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
 
-    <script>
-        const stockData = {{ kline|tojson }};
-        let stockChart;
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const klineData = {{ kline | tojson }};
+    const chartContainer = document.getElementById('kline-chart');
+    const chart = LightweightCharts.createChart(chartContainer, {
+        width: chartContainer.clientWidth,
+        height: 400
+    });
 
-        function createStockChart(data) {
-            const container = document.getElementById('stock-chart');
-            if (!container || !data || data.length === 0) return;
-            container.innerHTML = '';
-            const chart = LightweightCharts.createChart(container, { width: container.clientWidth, height: 350 });
-            const candlestickSeries = chart.addCandlestickSeries({
-                upColor: '#10b981',
-                downColor: '#ef4444',
-                borderUpColor: '#10b981',
-                borderDownColor: '#ef4444',
-                wickUpColor: '#10b981',
-                wickDownColor: '#ef4444'
-            });
-            const volumeSeries = chart.addHistogramSeries({
-                color: '#26a69a',
-                priceFormat: { type: 'volume' },
-                priceScaleId: '',
-            });
-            const chartData = data.map(d => ({ time: d.time, open: d.open, high: d.high, low: d.low, close: d.close }));
-            const volumeData = data.map(d => ({ time: d.time, value: d.volume, color: d.close >= d.open ? 'rgba(16, 185, 129, 0.5)' : 'rgba(239, 68, 68, 0.5)' }));
-            candlestickSeries.setData(chartData);
-            volumeSeries.setData(volumeData);
-            chart.timeScale().fitContent();
-            window.addEventListener('resize', () => { chart.resize(container.clientWidth, 350); });
-            return chart;
-        }
+    const candles = klineData.map(d => ({
+        time: d.date || d.time,
+        open: parseFloat(d.open || d.Open || 0),
+        high: parseFloat(d.max || d.high || d.High || 0),
+        low: parseFloat(d.min || d.low || d.Low || 0),
+        close: parseFloat(d.close || d.Close || 0),
+    }))
+        .filter(d => d.time && d.open && d.high && d.low && d.close)
+        .sort((a, b) => String(a.time).localeCompare(String(b.time)));
 
-        document.addEventListener('DOMContentLoaded', () => {
-            if (stockData && stockData.length > 0 && !stockData[0].error) {
-                stockChart = createStockChart(stockData);
-            }
-        });
-    </script>
-    <script src="/static/js/charts.js"></script>
-</body>
-</html>
+    if (candles.length) {
+        chart.addCandlestickSeries({ upColor: '#22c55e', downColor: '#ef4444', borderVisible: false }).setData(candles);
+        chart.timeScale().fitContent();
+    }
+
+    window.addEventListener('resize', () => {
+        chart.applyOptions({ width: chartContainer.clientWidth });
+    });
+});
+</script>
+{% endblock %}

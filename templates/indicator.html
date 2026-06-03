@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}技術指標 - {{ stock_id }}{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex justify-between items-center">
+    <h1 class="text-3xl font-bold text-gray-800">技術指標分析</h1>
+    <form class="flex gap-2">
+        <input type="text" name="id" value="{{ stock_id }}" placeholder="股票代碼" class="px-3 py-2 border rounded-lg">
+        <button type="submit" class="btn-primary">查詢</button>
+    </form>
+</div>
+
+<div class="card mb-6">
+    <h2 class="text-lg font-semibold text-gray-700 mb-4">K 線 + MA + 成交量</h2>
+    <div id="main-chart" style="height: 400px;"></div>
+</div>
+
+<div class="card mb-6">
+    <h2 class="text-lg font-semibold text-gray-700 mb-4">RSI (6, 12, 24)</h2>
+    <div id="rsi-chart" style="height: 200px;"></div>
+</div>
+
+<div class="card mb-6">
+    <h2 class="text-lg font-semibold text-gray-700 mb-4">MACD (12, 26, 9)</h2>
+    <div id="macd-chart" style="height: 200px;"></div>
+</div>
+
+<div class="card">
+    <h2 class="text-lg font-semibold text-gray-700 mb-4">KD 指標</h2>
+    <div id="kd-chart" style="height: 200px;"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const klineData = {{ kline | tojson }};
+const dfData = {{ df | tojson }};
+
+function mapData(raw) {
+    return raw.map(d => ({
+        time: d.date || d.time,
+        open: parseFloat(d.open || d.Open || 0),
+        high: parseFloat(d.max || d.high || d.High || 0),
+        low: parseFloat(d.min || d.low || d.Low || 0),
+        close: parseFloat(d.close || d.Close || 0),
+    }));
+}
+
+function lineData(raw, key) {
+    return raw.filter(d => d[key] != null).map(d => ({
+        time: d.date,
+        value: parseFloat(d[key]),
+    }));
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const mainChart = LightweightCharts.createChart(document.getElementById('main-chart'), { width: document.getElementById('main-chart').clientWidth, height: 400 });
+    const candleSeries = mainChart.addCandlestickSeries({ upColor: '#22c55e', downColor: '#ef4444', borderVisible: false });
+    candleSeries.setData(mapData(klineData));
+
+    const ma5Series = mainChart.addLineSeries({ color: '#f59e0b', lineWidth: 1 });
+    ma5Series.setData(lineData(dfData, 'ma5'));
+    const ma20Series = mainChart.addLineSeries({ color: '#3b82f6', lineWidth: 1 });
+    ma20Series.setData(lineData(dfData, 'ma20'));
+    const ma60Series = mainChart.addLineSeries({ color: '#8b5cf6', lineWidth: 1 });
+    ma60Series.setData(lineData(dfData, 'ma60'));
+
+    const volSeries = mainChart.addHistogramSeries({ color: '#26a69a40', priceFormat: { type: 'volume' }, priceScaleId: '' });
+    volSeries.priceScale().applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } });
+    volSeries.setData(klineData.map(d => ({ time: d.date || d.time, value: parseFloat(d.Trading_Volume || d.volume || 0), color: '#26a69a40' })));
+
+    mainChart.timeScale().fitContent();
+
+    const rsiChart = LightweightCharts.createChart(document.getElementById('rsi-chart'), { width: document.getElementById('rsi-chart').clientWidth, height: 200 });
+    const rsi6Series = rsiChart.addLineSeries({ color: '#ef4444', lineWidth: 1 });
+    rsi6Series.setData(lineData(dfData, 'rsi6'));
+    const rsi12Series = rsiChart.addLineSeries({ color: '#3b82f6', lineWidth: 1 });
+    rsi12Series.setData(lineData(dfData, 'rsi12'));
+    const rsi24Series = rsiChart.addLineSeries({ color: '#22c55e', lineWidth: 1 });
+    rsi24Series.setData(lineData(dfData, 'rsi24'));
+    rsiChart.timeScale().fitContent();
+
+    const macdChart = LightweightCharts.createChart(document.getElementById('macd-chart'), { width: document.getElementById('macd-chart').clientWidth, height: 200 });
+    const macdDif = macdChart.addLineSeries({ color: '#3b82f6', lineWidth: 1 });
+    macdDif.setData(lineData(dfData, 'macd_dif'));
+    const macdDem = macdChart.addLineSeries({ color: '#f59e0b', lineWidth: 1 });
+    macdDem.setData(lineData(dfData, 'macd_dem'));
+    const macdOscil = macdChart.addHistogramSeries({ color: '#22c55e', lineWidth: 1 });
+    macdOscil.setData(lineData(dfData, 'macd_oscil'));
+    macdChart.timeScale().fitContent();
+
+    const kdChart = LightweightCharts.createChart(document.getElementById('kd-chart'), { width: document.getElementById('kd-chart').clientWidth, height: 200 });
+    const kSeries = kdChart.addLineSeries({ color: '#3b82f6', lineWidth: 1 });
+    kSeries.setData(lineData(dfData, 'k_value'));
+    const dSeries = kdChart.addLineSeries({ color: '#f59e0b', lineWidth: 1 });
+    dSeries.setData(lineData(dfData, 'd_value'));
+    kdChart.timeScale().fitContent();
+});
+</script>
+{% endblock %}
