@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>台股資料分析平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', system-ui, sans-serif; }
+        .chart-container { width: 100%; height: 300px; }
+    </style>
+</head>
+<body class="bg-[#f8fafc] min-h-screen">
+    <nav class="bg-[#1e3a8a] text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex space-x-8">
+                    <a href="/" class="px-4 py-2 rounded hover:bg-blue-700">大盤</a>
+                    <a href="/stock?id=2330" class="px-4 py-2 rounded hover:bg-blue-700">個股</a>
+                    <a href="/stock?id=2330" class="px-4 py-2 rounded hover:bg-blue-700">法人</a>
+                </div>
+                <div class="text-sm">台股資料分析平台 MVP</div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-6">台股大盤儀表板</h1>
+
+        {% if index_data.error %}
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+            <strong>錯誤：</strong>{{ index_data.error }}
+        </div>
+        {% else %}
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white rounded-xl shadow p-4">
+                <div class="text-sm text-gray-500 mb-1">加權指數</div>
+                <div class="text-2xl font-bold text-[#1e3a8a]">{{ index_data.index }}</div>
+                <div class="text-sm {% if index_data.change >= 0 %}text-[#10b981]{% else %}text-[#ef4444]{% endif %}">
+                    {{ index_data.change }} ({{ '%+.2f'|format(index_data.change / index_data.index * 100) }}%)
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow p-4">
+                <div class="text-sm text-gray-500 mb-1">成交金額</div>
+                <div class="text-2xl font-bold text-[#1e3a8a]">{{ index_data.volume }} 億</div>
+            </div>
+            <div class="bg-white rounded-xl shadow p-4">
+                <div class="text-sm text-gray-500 mb-1">漲跌家數</div>
+                <div class="text-lg">
+                    <span class="text-[#10b981]">{{ index_data.up_count }}</span>
+                    <span class="text-gray-400 mx-1">/</span>
+                    <span class="text-[#ef4444]">{{ index_data.down_count }}</span>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow p-4">
+                <div class="text-sm text-gray-500 mb-1">外資淨買賣</div>
+                <div class="text-2xl font-bold {% if index_data.foreign_net is not none and index_data.foreign_net >= 0 %}text-[#10b981]{% else %}text-[#ef4444]{% endif %}">
+                    {{ index_data.foreign_net }} 億
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <div class="bg-white rounded-xl shadow p-4">
+                <h2 class="text-lg font-semibold mb-4 text-gray-800">加權指數 K 線圖</h2>
+                {% if weighted_kline and weighted_kline|length > 0 %}
+                <div id="weighted-chart" class="chart-container"></div>
+                {% else %}
+                <div class="text-red-500 py-8 text-center">無法獲取 K 線資料</div>
+                {% endif %}
+            </div>
+            <div class="bg-white rounded-xl shadow p-4">
+                <h2 class="text-lg font-semibold mb-4 text-gray-800">台積電 (2330) K 線圖</h2>
+                {% if tsmc_kline and tsmc_kline|length > 0 %}
+                <div id="tsmc-chart" class="chart-container"></div>
+                {% else %}
+                <div class="text-red-500 py-8 text-center">無法獲取 K 線資料</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow p-4">
+            <h2 class="text-lg font-semibold mb-4 text-gray-800">快速查詢個股</h2>
+            <form action="/stock" method="get" class="flex gap-2">
+                <input type="text" name="id" placeholder="輸入股票代碼 (如 2330)" class="flex-1 px-4 py-2 border rounded-lg">
+                <button type="submit" class="px-6 py-2 bg-[#1e3a8a] text-white rounded-lg hover:bg-blue-700">查詢</button>
+            </form>
+        </div>
+    </main>
+
+    <footer class="bg-[#1e3a8a] text-white text-center py-4 mt-8">
+        <div class="text-sm">© 2026 台股資料分析平台 MVP</div>
+    </footer>
+
+    <script>
+        const weightedData = {{ weighted_kline|tojson }};
+        const tsmcData = {{ tsmc_kline|tojson }};
+
+        function createChart(containerId, data) {
+            if (!data || data.length === 0) return;
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.innerHTML = '';
+            const chart = LightweightCharts.createChart(container, { width: container.clientWidth, height: 300 });
+            const candlestickSeries = chart.addCandlestickSeries({
+                upColor: '#10b981',
+                downColor: '#ef4444',
+                borderUpColor: '#10b981',
+                borderDownColor: '#ef4444',
+                wickUpColor: '#10b981',
+                wickDownColor: '#ef4444'
+            });
+            const volumeSeries = chart.addHistogramSeries({
+                color: '#26a69a',
+                priceFormat: { type: 'volume' },
+                priceScaleId: '',
+            });
+            const chartData = data.map(d => ({ time: d.time, open: d.open, high: d.high, low: d.low, close: d.close }));
+            const volumeData = data.map(d => ({ time: d.time, value: d.volume, color: d.close >= d.open ? 'rgba(16, 185, 129, 0.5)' : 'rgba(239, 68, 68, 0.5)' }));
+            candlestickSeries.setData(chartData);
+            volumeSeries.setData(volumeData);
+            chart.timeScale().fitContent();
+            window.addEventListener('resize', () => { chart.resize(container.clientWidth, 300); });
+            return chart;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            createChart('weighted-chart', weightedData);
+            createChart('tsmc-chart', tsmcData);
+        });
+    </script>
+    <script src="/static/js/charts.js"></script>
+</body>
+</html>
