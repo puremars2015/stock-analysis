@@ -7,28 +7,136 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .nav-link { padding: 0.5rem 1rem; border-radius: 0.5rem; transition: background-color 150ms ease; }
-        .nav-link:hover { background-color: rgb(29 78 216); }
-        .nav-link.active { background-color: rgb(37 99 235); }
-        .card { background: #fff; border-radius: 0.75rem; box-shadow: 0 1px 2px rgb(0 0 0 / 0.05); border: 1px solid rgb(243 244 246); padding: 1.5rem; }
-        .btn-primary { background-color: rgb(37 99 235); color: #fff; padding: 0.5rem 1rem; border-radius: 0.5rem; transition: background-color 150ms ease; }
-        .btn-primary:hover { background-color: rgb(29 78 216); }
+        :root {
+            --navy-950: #07111f;
+            --navy-900: #0b172a;
+            --navy-800: #10233f;
+            --gold-500: #d4af37;
+            --gold-400: #f0c85a;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: #e5edf7;
+            background:
+                radial-gradient(circle at top left, rgba(212, 175, 55, 0.16), transparent 32rem),
+                linear-gradient(135deg, var(--navy-950) 0%, var(--navy-900) 45%, #13284a 100%);
+        }
+
+        .nav-link {
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            transition: background-color 180ms ease, color 180ms ease, transform 180ms ease;
+        }
+
+        .nav-link:hover {
+            background-color: rgba(212, 175, 55, 0.16);
+            color: #fff7d6;
+            transform: translateY(-1px);
+        }
+
+        .nav-link.active {
+            background: linear-gradient(135deg, var(--gold-500), var(--gold-400));
+            color: #101827;
+            font-weight: 700;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.96);
+            border-radius: 1rem;
+            box-shadow: 0 18px 45px rgb(7 17 31 / 0.12);
+            border: 1px solid rgba(212, 175, 55, 0.18);
+            padding: 1.5rem;
+            color: #111827;
+        }
+
+        .market-card {
+            position: relative;
+            overflow: hidden;
+            transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+        }
+
+        .market-card::before {
+            content: "";
+            position: absolute;
+            inset: 0 0 auto 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--gold-500), transparent);
+        }
+
+        .market-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 24px 60px rgb(7 17 31 / 0.22);
+            border-color: rgba(212, 175, 55, 0.52);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--gold-500), var(--gold-400));
+            color: #101827;
+            font-weight: 700;
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem;
+            transition: transform 150ms ease, box-shadow 150ms ease;
+            box-shadow: 0 10px 24px rgba(212, 175, 55, 0.25);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 14px 30px rgba(212, 175, 55, 0.36);
+        }
+
         .btn-secondary { background-color: rgb(243 244 246); color: rgb(55 65 81); padding: 0.5rem 1rem; border-radius: 0.5rem; transition: background-color 150ms ease; }
         .btn-secondary:hover { background-color: rgb(229 231 235); }
-        .stat-up { color: rgb(239 68 68); }
-        .stat-down { color: rgb(34 197 94); }
+        .stat-up { color: rgb(220 38 38); }
+        .stat-down { color: rgb(22 163 74); }
+        .stat-flat { color: rgb(107 114 128); }
+
+        .loader-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--navy-950);
+            transition: opacity 350ms ease, visibility 350ms ease;
+        }
+
+        .loader-overlay.loaded {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .loader-ring {
+            width: 4rem;
+            height: 4rem;
+            border-radius: 9999px;
+            border: 4px solid rgba(255, 255, 255, 0.14);
+            border-top-color: var(--gold-400);
+            animation: spin 800ms linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-gray-50 min-h-screen">
-    <nav class="bg-blue-800 text-white shadow-lg">
+<body class="min-h-screen">
+    <div id="page-loader" class="loader-overlay" aria-label="頁面載入中">
+        <div class="text-center">
+            <div class="loader-ring mx-auto mb-4"></div>
+            <p class="text-sm font-semibold tracking-widest text-yellow-200">LOADING MARKET DATA</p>
+        </div>
+    </div>
+
+    <nav class="bg-[#07111f]/85 text-white shadow-2xl backdrop-blur border-b border-yellow-400/20">
         <div class="max-w-7xl mx-auto px-4">
             <div class="flex items-center justify-between h-16">
                 <div class="flex items-center space-x-8">
-                    <a href="/" class="text-xl font-bold">台股分析系統</a>
+                    <a href="/" class="text-xl font-extrabold tracking-tight"><span class="text-yellow-300">TW</span> 台股分析系統</a>
                     <div class="hidden md:flex space-x-2">
                         <a href="/" class="nav-link {% if request.endpoint == 'index' %}active{% endif %}">首頁</a>
                         <a href="/stock" class="nav-link {% if request.endpoint == 'stock' %}active{% endif %}">個股查詢</a>
@@ -37,7 +145,7 @@
                         <a href="/backtest" class="nav-link {% if request.endpoint == 'backtest_page' %}active{% endif %}">回測</a>
                     </div>
                 </div>
-                <div class="text-sm text-blue-200">
+                <div class="text-sm text-yellow-100/80">
                     {{ now().strftime("%Y-%m-%d %H:%M") if now else "" }}
                 </div>
             </div>
@@ -48,12 +156,18 @@
         {% block content %}{% endblock %}
     </main>
 
-    <footer class="bg-gray-800 text-gray-400 py-6 mt-12">
+    <footer class="bg-[#07111f]/90 text-slate-400 py-6 mt-12 border-t border-yellow-400/10">
         <div class="max-w-7xl mx-auto px-4 text-center text-sm">
             <p>台股分析系統 &copy; 2024 | 資料來源：FinMind API</p>
         </div>
     </footer>
 
     {% block scripts %}{% endblock %}
+    <script>
+        window.addEventListener('load', function() {
+            const loader = document.getElementById('page-loader');
+            if (loader) loader.classList.add('loaded');
+        });
+    </script>
 </body>
 </html>

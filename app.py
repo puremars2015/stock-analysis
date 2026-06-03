@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, jsonify
 from datetime import datetime, timedelta
 from sqlalchemy import func
 from services.finmind import client
-from services.data_sync import sync_stock_info, sync_stock_price, sync_institutional, sync_taiex, sync_all
+from services.data_sync import sync_stock_info, sync_stock_price, sync_institutional, sync_taiex, sync_all, sync_all_market_data
 from services.indicators import kline_to_df, compute_indicators, get_latest_indicators
 from services.screener import screen_by_preset, SCREENER_PRESETS
 from services.backtest import backtest_stock
@@ -241,6 +241,17 @@ def sync_data():
     stock_ids = request.json.get("stock_ids", ["2330", "2317", "2454"]) if request.is_json else ["2330", "2317", "2454"]
     results = sync_all(stock_ids)
     return jsonify({"status": "ok", "results": results})
+
+
+@app.route("/sync-all", methods=["POST"])
+def sync_all_data():
+    payload = request.get_json(silent=True) or {}
+    try:
+        top_n = int(payload.get("top_n", 50))
+    except (TypeError, ValueError):
+        top_n = 50
+    results = sync_all_market_data(top_n=top_n)
+    return jsonify({"status": results.get("status", "ok"), "results": results})
 
 
 @app.route("/api/kline/<stock_id>")

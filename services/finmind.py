@@ -45,6 +45,9 @@ class FinMindClient:
         data = self._request("TaiwanStockInfo", data_id=stock_id)
         return data[0] if data else None
 
+    def get_all_stock_info(self) -> list:
+        return self._request("TaiwanStockInfo")
+
     def get_stock_price(self, stock_id: str, days: int = 90) -> list:
         end = datetime.now().strftime("%Y-%m-%d")
         start = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
@@ -59,6 +62,11 @@ class FinMindClient:
         end = datetime.now().strftime("%Y-%m-%d")
         start = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
         return self._request("TaiwanStockInstitutionalInvestorsBuySell", data_id=stock_id, start_date=start, end_date=end)
+
+    def get_market_value(self, days: int = 7) -> list:
+        end = datetime.now().strftime("%Y-%m-%d")
+        start = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+        return self._request("TaiwanStockMarketValue", start_date=start, end_date=end)
 
     def get_broad_index(self, index_id: str = "TAIEX", days: int = 7) -> list:
         end = datetime.now().strftime("%Y-%m-%d")

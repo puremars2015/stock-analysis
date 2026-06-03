@@ -3,29 +3,59 @@
 {% block title %}台股分析系統 - 首頁{% endblock %}
 
 {% block content %}
-<div class="mb-8">
-    <h1 class="text-3xl font-bold text-gray-800">大盤概況</h1>
+{% set index_change = index_info.change if index_info.change is not none else none %}
+{% set index_price = index_info.price if index_info.price is not none else none %}
+{% set previous_price = (index_price - index_change) if index_price is not none and index_change is not none else none %}
+{% set change_pct = (index_change / previous_price * 100) if previous_price else none %}
+{% set market_state_class = 'bg-red-500 shadow-red-500/50' if index_change is not none and index_change > 0 else ('bg-green-500 shadow-green-500/50' if index_change is not none and index_change < 0 else 'bg-gray-400 shadow-gray-400/40') %}
+{% set market_state_text = '大盤上漲' if index_change is not none and index_change > 0 else ('大盤下跌' if index_change is not none and index_change < 0 else '盤勢待確認') %}
+
+<div class="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+    <div>
+        <p class="mb-2 text-sm font-semibold uppercase tracking-[0.28em] text-yellow-200/80">Market Overview</p>
+        <h1 class="text-4xl font-extrabold text-white md:text-5xl">大盤概況</h1>
+    </div>
+    <div class="inline-flex items-center gap-3 rounded-full border border-yellow-300/25 bg-white/10 px-4 py-2 text-sm font-semibold text-white shadow-lg backdrop-blur">
+        <span class="relative flex h-3 w-3">
+            <span class="absolute inline-flex h-full w-full animate-ping rounded-full {{ market_state_class }} opacity-60"></span>
+            <span class="relative inline-flex h-3 w-3 rounded-full {{ market_state_class }} shadow-lg"></span>
+        </span>
+        {{ market_state_text }}
+    </div>
 </div>
 
 <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-    <div class="card">
-        <p class="text-sm text-gray-500 mb-1">加權指數</p>
+    <div class="card market-card">
+        <p class="text-sm font-semibold text-gray-500 mb-1">加權指數</p>
         <p class="text-3xl font-bold text-gray-800">{{ "%.2f"|format(index_info.price) if index_info.price is not none else "-" }}</p>
-        <p class="{% if index_info.change is not none and index_info.change >= 0 %}stat-up{% else %}stat-down{% endif %} text-lg mt-1">
-            {% if index_info.change is not none %}{% if index_info.change >= 0 %}+{% endif %}{{ "%.2f"|format(index_info.change) }}{% else %}-{% endif %}
+        <p class="{% if index_change is not none and index_change > 0 %}stat-up{% elif index_change is not none and index_change < 0 %}stat-down{% else %}stat-flat{% endif %} text-lg font-bold mt-2">
+            {% if index_change is not none %}{% if index_change > 0 %}+{% endif %}{{ "%.2f"|format(index_change) }}{% else %}-{% endif %}
+            <span class="text-sm font-semibold">
+                {% if change_pct is not none %}({% if change_pct > 0 %}+{% endif %}{{ "%.2f"|format(change_pct) }}%){% endif %}
+            </span>
         </p>
     </div>
-    <div class="card">
-        <p class="text-sm text-gray-500 mb-1">成交金額</p>
-        <p class="text-3xl font-bold text-gray-800">{{ index_info.trading_money or "-" }}</p>
+    <div class="card market-card">
+        <p class="text-sm font-semibold text-gray-500 mb-1">成交金額</p>
+        <p class="text-3xl font-bold text-gray-800">
+            {% if index_info.trading_money is not none %}
+                {% if index_info.trading_money is number %}
+                    {% if index_info.trading_money|abs >= 1000000000000 %}{{ "%.2f"|format(index_info.trading_money / 1000000000000) }} 兆{% elif index_info.trading_money|abs >= 100000000 %}{{ "%.1f"|format(index_info.trading_money / 100000000) }} 億{% else %}{{ index_info.trading_money }}{% endif %}
+                {% else %}
+                    {{ index_info.trading_money }}
+                {% endif %}
+            {% else %}
+                -
+            {% endif %}
+        </p>
     </div>
-    <div class="card">
-        <p class="text-sm text-gray-500 mb-1">上漲 / 下跌家數</p>
+    <div class="card market-card">
+        <p class="text-sm font-semibold text-gray-500 mb-1">上漲 / 下跌家數</p>
         <p class="text-3xl font-bold text-gray-800">{{ index_info.breadth or "-" }}</p>
     </div>
-    <div class="card">
-        <p class="text-sm text-gray-500 mb-1">外資買賣超</p>
-        <p class="text-3xl font-bold text-blue-500">{{ index_info.foreign_net or "-" }}</p>
+    <div class="card market-card">
+        <p class="text-sm font-semibold text-gray-500 mb-1">外資買賣超</p>
+        <p class="text-3xl font-bold text-[#b88912]">{{ index_info.foreign_net or "-" }}</p>
     </div>
 </div>
 
@@ -43,7 +73,7 @@
 <div class="card">
     <h2 class="text-lg font-semibold text-gray-700 mb-4">快速查詢</h2>
     <form action="/stock" method="get" class="flex gap-4 items-center">
-        <input type="text" name="id" placeholder="輸入股票代碼" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+        <input type="text" name="id" placeholder="輸入股票代碼" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent">
         <button type="submit" class="btn-primary">查詢</button>
     </form>
 </div>
@@ -51,14 +81,19 @@
 
 {% block scripts %}
 <script>
-function createChart(container, data, upColor = '#22c55e', downColor = '#ef4444') {
+function createChart(container, data, upColor = '#dc2626', downColor = '#16a34a') {
     if (!container) return null;
     if (!data || data.length === 0) {
         container.innerHTML = '<div class="h-full flex items-center justify-center text-gray-400">目前無可顯示資料</div>';
         return null;
     }
 
-    const chart = LightweightCharts.createChart(container, { width: container.clientWidth, height: 300 });
+    const chart = LightweightCharts.createChart(container, {
+        width: container.clientWidth,
+        height: 300,
+        layout: { background: { color: '#ffffff' }, textColor: '#334155' },
+        grid: { vertLines: { color: '#e2e8f0' }, horzLines: { color: '#e2e8f0' } },
+    });
     const candles = data.map(d => ({
         time: d.date || d.time,
         open: parseFloat(d.open ?? d.Open),
@@ -73,7 +108,13 @@ function createChart(container, data, upColor = '#22c55e', downColor = '#ef4444'
         return null;
     }
 
-    const candleSeries = chart.addCandlestickSeries({ upColor, downColor, borderVisible: false });
+    const candleSeries = chart.addCandlestickSeries({
+        upColor,
+        downColor,
+        borderVisible: false,
+        lastValueVisible: false,
+        priceLineVisible: true,
+    });
     candleSeries.setData(candles);
 
     const volumeSeries = chart.addHistogramSeries({
